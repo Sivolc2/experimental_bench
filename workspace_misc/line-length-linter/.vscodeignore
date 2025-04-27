@@ -1,0 +1,30 @@
+# Exclude everything by default
+**/*
+
+# Only include what's needed
+!package.json
+!LICENSE
+!README_line-length-linter.md
+!out/extension.js
+!out/extension.js.map
+
+# Explicitly exclude test files
+test-long-file.js
+test-long-file.js.map
+test-long-file.ts
+
+.vscode/**
+.vscode-test/**
+src/**
+out/test/**
+test/**
+.gitignore
+venv/**
+node_modules/**
+tsconfig.json
+webpack.config.js
+.eslintrc.json
+.github/**
+.prettierrc
+.prettierignore
+setup_guide.md 

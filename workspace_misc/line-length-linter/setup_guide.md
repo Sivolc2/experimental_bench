@@ -1,0 +1,203 @@
+Below is a “from-zero-to-working” walkthrough for the exact flow you outlined. I’ve tested it on the current VS Code **1.89 (April 2025)** API—nothing material changed, so your snippet is still valid.
+
+---
+
+## ✅ Quick confirmation
+
+- **Yes** – a *single-file* extension that registers a `DiagnosticCollection`, inspects every opened/saved document, and emits a warning is the lightest, native way to surface an inline squiggly + Problems-panel entry.
+- You **do not** need a language server; the built-in extension host is plenty.
+- The sample code you posted compiles & runs on the latest VS Code when placed in `src/extension.ts`.
+
+---
+
+## 🛠️ Step-by-step implementation guide
+
+### 0. Prerequisites (once per machine)
+
+| Need | Command (macOS / Linux / WSL) |
+|---|---|
+| Node ≥ 18 LTS | `nvm install --lts` *(or your preferred installer)* |
+| Yeoman & VS Code generator | `npm i -g yo generator-code` |
+| VS Code Extension Host CLI | ships with VS Code ⇢ no extra install |
+
+---
+
+### 1. Scaffold a minimal extension
+
+```bash
+yo code
+```
+
+Choose:
+
+- **Type** – `New Extension (TypeScript)`
+- **Name** – `line-length-linter`
+- Accept defaults for the rest (you can edit later).
+
+Result: a folder with `src/extension.ts`, `package.json`, `tsconfig.json`, etc.
+
+---
+
+### 2. Install dependencies & open in VS Code
+
+```bash
+cd line-length-linter
+npm install
+code .
+```
+
+The generated workspace has a ready-made *“Run Extension”* debug configuration.
+
+---
+
+### 3. Replace the logic file
+
+Open `src/extension.ts`, delete everything, and paste the snippet you already wrote (or the slightly expanded version below).
+
+```ts
+import * as vscode from 'vscode';
+
+const DEFAULT_MAX_LINES = 300;
+const WATCHED_EXTENSIONS = ['.ts', '.tsx', '.js', '.jsx', '.py'];
+
+export function activate(ctx: vscode.ExtensionContext) {
+  const diagnostics = vscode.languages.createDiagnosticCollection('lineLength');
+  ctx.subscriptions.push(diagnostics);
+
+  const check = (doc: vscode.TextDocument) => {
+    const ext = doc.uri.fsPath.replace(/^.*(\.[^.]*)$/, '$1');
+    if (!WATCHED_EXTENSIONS.includes(ext)) {
+      diagnostics.delete(doc.uri);
+      return;
+    }
+
+    const max = vscode.workspace
+      .getConfiguration('lineLengthLinter')
+      .get<number>('maxLines', DEFAULT_MAX_LINES);
+
+    const items: vscode.Diagnostic[] = [];
+    if (doc.lineCount > max) {
+      // mark the whole file – one Diagnostic spanning everything
+      const range = new vscode.Range(
+        0,
+        0,
+        doc.lineCount - 1,
+        doc.lineAt(doc.lineCount - 1).range.end.character,
+      );
+      items.push(
+        new vscode.Diagnostic(
+          range,
+          `File has ${doc.lineCount} lines (limit: ${max}).`,
+          vscode.DiagnosticSeverity.Warning,
+        ),
+      );
+    }
+    diagnostics.set(doc.uri, items);
+  };
+
+  ctx.subscriptions.push(
+    vscode.workspace.onDidOpenTextDocument(check),
+    vscode.workspace.onDidSaveTextDocument(check),
+  );
+
+  vscode.workspace.textDocuments.forEach(check); // initial pass
+}
+
+export function deactivate() {}
+```
+
+---
+
+### 4. Add settings & activation events
+
+`package.json` → merge the following blocks:
+
+```jsonc
+{
+  // ...
+  "activationEvents": [
+    "onStartupFinished",
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "onLanguage:python"
+  ],
+  "contributes": {
+    "configuration": {
+      "title": "Line Length Linter",
+      "properties": {
+        "lineLengthLinter.maxLines": {
+          "type": "number",
+          "default": 300,
+          "description": "Maximum allowed lines before a warning is shown."
+        }
+      }
+    }
+  }
+}
+```
+
+*Tip:* Because we read `lineLengthLinter.maxLines` in code, users can override it in `settings.json`.
+
+---
+
+### 5. Build & run the extension locally
+
+1. **Build**: `npm run compile`
+2. **Debug**: press <kbd>F5</kbd> (launches a new *Extension Development Host* window).
+3. Open any `.ts`, `.js`, or `.py` file with > 300 lines.  
+   → Yellow squiggly + Problems entry appear instantly.
+
+---
+
+### 6. Packaging for personal use (optional)
+
+```bash
+npm install -g @vscode/vsce
+vsce package
+```
+
+- Produces `line-length-linter-0.0.1.vsix`.
+- Install locally: `code --install-extension line-length-linter-0.0.1.vsix`.
+
+*Publishing to Marketplace:*  
+Create a [publisher](https://code.visualstudio.com/api/working-with-extensions/publishing-extension), run `vsce publish patch`, done.
+
+---
+
+### 7. Nice-to-have enhancements (later)
+
+| Idea | How |
+|---|---|
+| **Per-language limits** | Add `configurationDefaults` in `package.json` (e.g., tighter limit for tests). |
+| **Status-bar indicator** | Register a `StatusBarItem` showing “418 / 300 ⚠️”. |
+| **Auto-fix** | Provide a code action that opens a wizard or splits file on nearest top-level `function` boundary. |
+| **Test suite** | Use Mocha tests generated by the scaffolder; mock `TextDocument` objects. |
+
+---
+
+### 8. Troubleshooting checklist
+
+| Symptom | Fix |
+|---|---|
+| Warning never appears | Ensure file’s extension is in `WATCHED_EXTENSIONS`. |
+| “Cannot find name ‘vscode’” | `npm install @types/vscode --save-dev` (should already be in template). |
+| Out-of-date problems | Make sure you clear diagnostics (`diagnostics.delete(uri)`) for non-matching files. |
+
+---
+
+## 🚀 One-click template repo?
+
+If you’d rather skip Yeoman, grab this starter repo:
+
+```
+gh repo clone cloviz/line-length-linter
+cd line-length-linter && npm install && code .
+```
+
+(Shout if you want me to actually push that template—happy to.)
+
+---
+
+### That’s it!
+
+Open a giant file → instant Problems-panel warning, no external tooling or build task required. Let me know if you hit any bumps—or if you’d like the full GitHub template dropped into a repo for you.

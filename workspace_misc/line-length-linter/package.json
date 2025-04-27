@@ -1,0 +1,57 @@
+{
+  "name": "line-length-linter",
+  "displayName": "Line Length Linter",
+  "description": "Lints files for excessive length",
+  "version": "0.0.1",
+  "engines": {
+    "vscode": "^1.89.0"
+  },
+  "publisher": "cloviz",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/cloviz/line-length-linter"
+  },
+  "categories": [
+    "Linters"
+  ],
+  "main": "./out/extension.js",
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "pretest": "npm run compile",
+    "test": "node ./src/test/runTest.js",
+    "package": "vsce package"
+  },
+  "activationEvents": [
+    "onStartupFinished",
+    "onLanguage:javascript",
+    "onLanguage:typescript",
+    "onLanguage:python"
+  ],
+  "contributes": {
+    "configuration": {
+      "title": "Line Length Linter",
+      "properties": {
+        "lineLengthLinter.maxLines": {
+          "type": "number",
+          "default": 300,
+          "description": "Maximum allowed lines before a warning is shown."
+        }
+      }
+    }
+  },
+  "dependencies": {
+    "glob": "^10.3.10"
+  },
+  "devDependencies": {
+    "@types/glob": "^8.1.0",
+    "@types/mocha": "^10.0.6",
+    "@types/node": "^20.11.25",
+    "@types/vscode": "^1.89.0",
+    "@vscode/test-electron": "^2.3.9",
+    "@vscode/vsce": "^2.22.0",
+    "mocha": "^10.3.0",
+    "typescript": "^5.0.0"
+  }
+} 
